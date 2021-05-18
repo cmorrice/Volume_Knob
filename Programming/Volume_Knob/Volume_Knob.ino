@@ -22,10 +22,10 @@ bool buttonLastState = false;
 
 //hardware constants
 const int8_t led = 13;
-const int8_t aPin = 12;
-const int8_t bPin = 14;
-const int8_t buttonPin = 27;
-const int8_t vibrationMotorPin = 25;
+const int8_t aPin = 27;
+const int8_t bPin = 26;
+const int8_t buttonPin = 25;
+const int8_t vibrationMotorPin = 33;
 
 //hardware objects
 WebServer server(80);
@@ -86,7 +86,7 @@ void playPauseHandle()
 {
     digitalWrite(led, 1);
     bleKeyboard.write(KEY_MEDIA_PLAY_PAUSE);
-    String message = messageStart + "Play/Pause Function</h3>";
+    String message = "Play/Pause Function</h3>";
     message += "<p>Play/Pause hit<p/>";
     
     yeet(message);
@@ -100,7 +100,7 @@ void volumeUpHandle()
         bleKeyboard.write(KEY_MEDIA_VOLUME_UP);
     }
     
-    String message = messageStart + "Volume Up Function</h3>";
+    String message = "Volume Up Function</h3>";
     message += "<p>Volume increased by 10<p/>";
     
     yeet(message);
@@ -114,7 +114,7 @@ void volumeDownHandle()
         bleKeyboard.write(KEY_MEDIA_VOLUME_DOWN);
     }
     
-    String message = messageStart + "Volume Down Function</h3>";
+    String message = "Volume Down Function</h3>";
     message += "<p>Volume decreased by 10<p/>";
     
     yeet(message);
@@ -123,7 +123,7 @@ void volumeDownHandle()
 void changeVolumeHandle()
 {
     digitalWrite(led, 1);
-    String message = messageStart + "changeVolume Function</h3>";
+    String message = "changeVolume Function</h3>";
     int8_t change = getArgValue("change").toInt();
     if ((change != notFound) && (change <= 100 && change >= -100))
     {
@@ -171,9 +171,9 @@ void changeVolumeHandle()
 //yeet takes the message, caps it off with the end message, and yeets it to the server
 void yeet(String message)
 {
-    message += messageEnd;
-    server.send(200, "text/html",message);
-    digitalWrite(led, 0);  
+    message = messageStart + message + messageEnd;
+    server.send(200, "text/html", message);
+    digitalWrite(led, 0); 
 }
 
 
@@ -191,20 +191,20 @@ void setup(void)
     Serial.println("");
     
     // Wait for connection
-    for (int f = 0; f < 10; f++)
+    for (int attempt = 0; attempt < 10; attempt++)
     {
-        if (WiFi.status() != WL_CONNECTED)
+        if (WiFi.status() != WL_CONNECTED) // if connection is not made
         {
-            delay(500);
             Serial.print(".");
-            if (f == 9)
+            if (attempt == 9) // after 10th attempt
             {
                 Serial.print("WiFi can't connect... moving on");
             }
+            delay(500);
         }
         else
         {
-            f = 10;
+            attempt = 10; // break out if connected
         }
     }
     Serial.println("");
@@ -249,6 +249,7 @@ void setup(void)
     pinMode(buttonPin, INPUT);
     pinMode(vibrationMotorPin, OUTPUT);
     aLastState = digitalRead(aPin);
+    buttonLastState = digitalRead(buttonPin);
     Serial.println("Rotary encoder initialized");
 }
 
@@ -256,7 +257,6 @@ void loop(void)
 {
     //handles the potential internet control
     server.handleClient();
-    //Serial.println("server has been handled");
     
     //handles the physical rotary encoder//
     //volume up and down//
@@ -277,44 +277,25 @@ void loop(void)
         }
         digitalWrite(vibrationMotorPin, LOW);
     }
-    
-    /*
-    if (aState != aLastState)
-    {
-        digitalWrite(vibrationMotorPin, HIGH);
-        if (digitalRead(bPin) == aState)
-        {
-            counter++;
-            bleKeyboard.write(KEY_MEDIA_VOLUME_UP);
-            Serial.println("Volume Up Sent");
-        }
-        else
-        {
-            counter--;
-            bleKeyboard.write(KEY_MEDIA_VOLUME_DOWN);
-            Serial.println("Volume Down Sent");
-        }
-        digitalWrite(vibrationMotorPin, LOW);
-    }
-    */
-    
     aLastState = aState;
+    
     //push button//
-    //always shows true while nothing is plugged in so comment out when not plugged in
-    buttonState = digitalRead(buttonPin);
-    if (buttonState)
+    buttonState = digitalRead(buttonPin); // reads LOW when pressed and HIGH when not
+    if (buttonState == LOW) // if button is pressed
     {
-        if (!buttonLastState)
+        if (buttonLastState == HIGH) // if button was previously not pressed
         {
-            digitalWrite(vibrationMotorPin, HIGH);
-            bleKeyboard.write(KEY_MEDIA_PLAY_PAUSE);
+            digitalWrite(vibrationMotorPin, HIGH); // turn on vibration
+            bleKeyboard.write(KEY_MEDIA_PLAY_PAUSE); // send play/pause
+            Serial.println("Play/Pause Sent");
         }
     }
-    else
+    else // if button is not pressed
     {
-        if (buttonLastState)
+        if (buttonLastState == LOW) // if button was previously pressed
         {
-            digitalWrite(vibrationMotorPin, LOW);
+            digitalWrite(vibrationMotorPin, LOW); // turn off vibration
+            delay(20);
         }
     }
     buttonLastState = buttonState;
