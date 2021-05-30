@@ -1,0 +1,50 @@
+<html>
+    <head>
+        <title>Bluetooth + WiFi Server</Title>
+
+        <style>
+            html { font-family: sans-serif; font-size: 18px; text-align: center; background-color: #eee;}
+            p { font-size: 24px; color: #555555 }
+            label { font-size: 24px; color: #555555}
+            .button { background-color: #0DBAB1; border: none; border-radius: 12px; color: white; padding: 16px 40px; text-decoration: none; font-size: 30px; margin: 2px; cursor: pointer; }
+            .button:hover { background-color: #12ddd3;}
+            .button2 { background-color: #555555; border: none; border-radius: 12px; color: white; padding: 16px 40px; text-decoration: none; font-size: 30px; margin: 2px; cursor: pointer; }
+        </style>
+    </head>
+
+    <body>
+        <!-- Volume Up Button -->
+        <p> Volume Up </p>
+        <p> <a href = "/volumeUp"> <button class = "button"> Volume Up </button> </a> </p>
+        <hr>
+        <!-- Volume Down Button -->
+        <p> Volume Down </p>
+        <p> <a href = "/volumeDown"> <button class = "button"> Volume Down </button> </a> </p>
+        <hr>
+        <!-- Play/Pause Button -->
+        <p> Play/Pause </p>
+        <p> <a href = "/playPause"> <button class = "button"> Play/Pause </button> </a> </p>
+        <hr>
+
+        <section class = "change">
+            <form action="/changeVolume" method = "POST"> 
+                <label for="volumeInput">Change Volume</label>
+                <br>
+                <input id="volumeInput" name="amount" type="number" min="-100" max="100" step = "2" required>
+                <br>
+                <span>-100</span>
+                <input id="volumeSlider" type="range" min="-100" max="100" step = "2" onchange = "updateTextInput(this.value);">
+                <span>100</span>
+                
+                <script type = "text/javascript">
+                    function updateTextInput(val)
+                    {
+                        document.getElementById('volumeInput').value = val;
+                    }
+                </script>
+                <br>
+                <input type="submit" value = "change">
+            </form>
+        </section>
+    </body>
+</html>

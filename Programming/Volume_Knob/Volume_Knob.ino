@@ -1,64 +1,87 @@
+/**
+ * Volume_Knob
+ * Author: Camilo Morrice
+ */
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <WebServer.h>
 #include <ESPmDNS.h>
 #include <BleKeyboard.h>
 
-//networking constants
+#define NOT_FOUND -1
+
+// networking constants
 const char* ssid = "Fios-KpG3D";
 const char* password = "buzz43hid63beep";
 
-//software constants
-const int notFound = -1;
-const String messageStart = "<html><head> <title>Bluetooth + WiFi Server</Title> </head><body style='font-family: sans-serif; font-size: 12px'> <h3>";
-const String messageEnd = "</body> </html>";
+// hardware constants
+const uint8_t led = 13;
+const uint8_t aPin = 27;
+const uint8_t bPin = 26;
+const uint8_t buttonPin = 25;
+const uint8_t vibrationMotorPin = 33;
 
-//software variables
+// software variables
 bool aState;
 bool aLastState;
 bool bState;
 bool buttonState;
-bool buttonLastState = false;
+bool buttonLastState;
 
-//hardware constants
-const int8_t led = 13;
-const int8_t aPin = 27;
-const int8_t bPin = 26;
-const int8_t buttonPin = 25;
-const int8_t vibrationMotorPin = 33;
-
-//hardware objects
+// hardware objects
 WebServer server(80);
 BleKeyboard bleKeyboard;
 
-/////////////////////////////
-//////////functions//////////
-/////////////////////////////
+/** helpers
+ * getArgValue() will return the argument from the URL
+ * sendPage() will send the html webpage
+ */
 String getArgValue(String name)
 {
-    for (uint8_t i = 0; i < server.args(); i++)
-    if(server.argName(i) == name)
+    for (uint8_t index = 0; index < server.args(); index++) // loops through server arguments
     {
-        String temp = "argument: " + name + " " + server.arg(i);
-        Serial.println(temp);
-        return server.arg(i);
+        if(server.argName(index) == name) // if argument is found
+        {
+            String temp = "argument: " + name + " " + server.arg(index);
+            Serial.println(temp);
+            return server.arg(index);
+        }
     }
-    return String(notFound);
+    return String(NOT_FOUND); 
+} // getArgValue()
+
+void printArgs()
+{
+    for (uint8_t index = 0; index < server.args(); index++) // loops through server arguments
+    {
+        String temp = "argument: " + server.argName(index) + " " + server.arg(index);
+        Serial.println(temp);
+    }
 }
 
+void sendPage()
+{
+    printArgs();
+    String webPage = "<html><head><title>Bluetooth + WiFi Server</Title><style>html { font-family: sans-serif; font-size: 18px; text-align: center; background-color: #eee;}p { font-size: 24px; color: #555555 }label { font-size: 24px; color: #555555}.button { background-color: #0DBAB1; border: none; border-radius: 12px; color: white; padding: 16px 40px; text-decoration: none; font-size: 30px; margin: 2px; cursor: pointer; }.button:hover { background-color: #12ddd3;}";
+    String webPage2 = ".button2 { background-color: #555555; border: none; border-radius: 12px; color: white; padding: 16px 40px; text-decoration: none; font-size: 30px; margin: 2px; cursor: pointer; }</style></head><body><!-- Volume Up Button --><p> Volume Up </p><p> <a href = \"/?volumeUp=1\"> <button class = \"button\"> Volume Up </button> </a> </p><hr><!-- Volume Down Button --><p> Volume Down </p><p> <a href = \"/volumeDown\"> <button class = \"button\"> Volume Down </button> </a> ";
+    String webPage3 = "</p><hr><!-- Play/Pause Button --><p> Play/Pause </p><p> <a href = \"/playPause\"> <button class = \"button\"> Play/Pause </button> </a> </p><hr><section class = \"change\"><form action=\"/changeVolume\" method = \"POST\"> <label for=\"volumeInput\">Change Volume</label><br><input id=\"volumeInput\" name=\"amount\" type=\"number\" min=\"-100\" max=\"100\" step = \"2\" required><br><span>-100</span><input id=\"volumeSlider\" type=\"range\" min=\"-100\" max=\"100\" step = \"2\" onchange = \"updateTextInput(this.value);\"><span>100</span><script type = \"text/javascript\">function updateTextInput(val){document.getElementById('volumeInput').value = val;}</script><br><input type=\"submit\" value = \"change\"></form></section></body></html>";
+    server.setContentLength(webPage.length() + webPage2.length() + webPage3.length());
+    server.send(200, "text/html", webPage);
+    server.sendContent(webPage2);
+    server.sendContent(webPage3);
+} // sendPage()
+
+/** server handles
+ * handRoot() will handle the root directory
+ * handleNotFound() will send an error page when the handle is not found
+ */
 void handleRoot()
 {
     digitalWrite(led, 1);
-    String message = messageStart + "Following functions are available:</h3>";
-    message += "<li><a href='/playPause'>/playPause</a> hits the play/pause button</li>";
-    message += "<li><a href='/volumeUp'>/volumeUp</a> increases the volume by 10</li>";
-    message += "<li><a href='/volumeDown'>/volumeDown</a> decreases the volume by 10</li>";
-    message += "<li><a href='/changeVolume?change='>/changeVolume</a> changes the volume by the argument <em>change=integer amount</em></li>";
-    message += "<li><a href='/thisiswrong'>/thisiswrong</a> this will take you to a none-existent page<br></li></ul>";
-    message += "<p>Syntax is as follows: http://192.168.1.177/<strong>command</strong>?<strong>argument1</strong>=<strong>value1</strong>&<strong>argument2</strong>=<strong>value2</strong>&...</p> </body> </html>";
-    server.send(200, "text/html", message);
+    sendPage();
+    delay(100);
     digitalWrite(led, 0);
-}
+} // handleRoot()
 
 void handleNotFound()
 {
@@ -71,26 +94,27 @@ void handleNotFound()
     message += "\nArguments: ";
     message += server.args();
     message += "\n";
-    for (uint8_t i = 0; i < server.args(); i++)
+    for (uint8_t index = 0; index < server.args(); index++)
     {
-        message += " " + server.argName(i) + ": " + server.arg(i) + "\n";
+        message += " " + server.argName(index) + ": " + server.arg(index) + "\n";
     }
     server.send(404, "text/plain", message);
     digitalWrite(led, 0);
-}
+} // handleNotFound()
 
-/////////////////////////////
-///bluetooth based handles///
-/////////////////////////////
+/** bluetooth based server handles
+ * playPauseHandle() will send the play/pause key
+ * volumeUpHandle() will send 5 volume up keys
+ * volumeDownHandle() will send 5 volume down keys
+ * changeVolumeHandle() will send the given amount of volume up/down keys
+ */
 void playPauseHandle()
 {
-    digitalWrite(led, 1);
+    digitalWrite(led, 1); // hello
     bleKeyboard.write(KEY_MEDIA_PLAY_PAUSE);
-    String message = "Play/Pause Function</h3>";
-    message += "<p>Play/Pause hit<p/>";
-    
-    yeet(message);
-}
+    sendPage();
+    digitalWrite(led, 0);
+} // playPauseHandle()
 
 void volumeUpHandle()
 {
@@ -100,11 +124,9 @@ void volumeUpHandle()
         bleKeyboard.write(KEY_MEDIA_VOLUME_UP);
     }
     
-    String message = "Volume Up Function</h3>";
-    message += "<p>Volume increased by 10<p/>";
-    
-    yeet(message);
-}
+    sendPage();
+    digitalWrite(led, 0);
+} // volumeUpHandle()
 
 void volumeDownHandle()
 {
@@ -114,72 +136,47 @@ void volumeDownHandle()
         bleKeyboard.write(KEY_MEDIA_VOLUME_DOWN);
     }
     
-    String message = "Volume Down Function</h3>";
-    message += "<p>Volume decreased by 10<p/>";
-    
-    yeet(message);
-}
+    sendPage();
+    digitalWrite(led, 0);
+} // volumeDownHandle()
 
 void changeVolumeHandle()
 {
     digitalWrite(led, 1);
-    String message = "changeVolume Function</h3>";
-    int8_t change = getArgValue("change").toInt();
-    if ((change != notFound) && (change <= 100 && change >= -100))
+    int8_t change = getArgValue("amount").toInt();
+    if ((change != NOT_FOUND && change != 0) && (change <= 100 && change >= -100)) // if change is found, not zero, and within bounds
     {
-        if (change < 0)
+        Serial.print("change = ");
+        Serial.println(change);
+        Serial.print("change/2 = ");
+        Serial.println(change/2);
+        change = change / 2; // since windows increases by increments of 2
+        if (change > 0) // if volume up
         {
-            for (int8_t f = 0; f > change/2; f--)
+            for (int8_t f = 0; f < change; f++)
             {
-                Serial.print("f = ");
-                Serial.println(f);
-                Serial.print("change = ");
-                Serial.println(change);
-                Serial.print("change/2 = ");
-                Serial.println(change/2);
-                bleKeyboard.write(KEY_MEDIA_VOLUME_DOWN);
-                delay(8);
-            }
-        }
-        else
-        {
-            for (int8_t f = 0; f < change/2; f++)
-            {
-                Serial.print("f = ");
-                Serial.println(f);
-                Serial.print("change = ");
-                Serial.println(change);
-                Serial.print("change/2 = ");
-                Serial.println(change/2);
                 bleKeyboard.write(KEY_MEDIA_VOLUME_UP);
                 delay(8);
             }
         }
-        message += "<p>Volume changed by " + String(change) + "<p/>";
+        else // if volume down
+        {
+            for (int8_t f = 0; change < f; f--)
+            { 
+                bleKeyboard.write(KEY_MEDIA_VOLUME_DOWN);
+                delay(8);
+            }
+        }
     }
-    else
-    {
-        message += "<p>To change the volume use this after the changeVolume handle: changeVolume?<em>change=<strong>integer of change amount</strong></em>";
-    }
-    
-    yeet(message);
-}
 
-/////////////////////////////
-//////helper functions///////
-/////////////////////////////
-//yeet takes the message, caps it off with the end message, and yeets it to the server
-void yeet(String message)
-{
-    message = messageStart + message + messageEnd;
-    server.send(200, "text/html", message);
-    digitalWrite(led, 0); 
-}
+    sendPage();
+    digitalWrite(led, 0);
+} // changeVolumeHandle()
 
-
-/////////////////////////////
-///////set up and loop///////
-/////////////////////////////
+/** setup and loop
+ * setup() will initialize the volume knob
+ * loop() will continuously check the server and hardware knob for input
+ */
 void setup(void)
 {
     /////////////////////////////
@@ -257,7 +254,7 @@ void loop(void)
 {
     //handles the potential internet control
     server.handleClient();
-    
+
     //handles the physical rotary encoder//
     //volume up and down//
     aState = digitalRead(aPin);
